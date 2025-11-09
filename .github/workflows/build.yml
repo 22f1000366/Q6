@@ -1,35 +1,56 @@
-name: Matrix Build & Artifacts Demo
+name: Matrix Build with Artifacts
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch: # Allows manual triggering
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Build (node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false
       matrix:
-        # Define a matrix with 3 variants
-        node-version: [18, 20, 22]
+        # at least 3 variants
+        node-version: ['14', '16', '18']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # This step includes the required dynamic identifier
-      - name: Build for Node ${{ matrix.node-version }} (matrix-c064f21)
-        run: |
-          echo "Simulating build for Node.js version ${{ matrix.node-version }}"
-          echo "This is the build output." > build_output.txt
-          echo "Identifier: matrix-efdd02d" >> build_output.txt
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
 
-      # This step uploads an artifact with the required dynamic prefix
-      - name: Upload Artifact
+      - name: matrix-3b32760
+        # This step must contain the identifier matrix-3b32760
+        run: |
+          echo "matrix-efdd02d - running build for Node.js ${{ matrix.node-version }}"
+          echo "Variant: node-${{ matrix.node-version }}" > variant-info.txt
+
+      - name: Install dependencies (if any)
+        run: |
+          # No dependencies required for this demo; keep this step to mirror real builds
+          node --version
+          npm --version || true
+
+      - name: Generate unique build artifact
+        run: |
+          ARTFILE="build-3b32760-node-${{ matrix.node-version }}.txt"
+          echo "Build artifact for Node.js ${{ matrix.node-version }}" > "$ARTFILE"
+          echo "Repository: $GITHUB_REPOSITORY" >> "$ARTFILE"
+          echo "Run ID: $GITHUB_RUN_ID" >> "$ARTFILE"
+          echo "Matrix variant: node-${{ matrix.node-version }}" >> "$ARTFILE"
+          # show file size for debugging
+          ls -l "$ARTFILE"
+        shell: bash
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          # Use the prefix and include the matrix variant in the name
+          # Must follow prefix build-3b32760-<variant>
           name: build-efdd02d-node-${{ matrix.node-version }}
-          path: build_output.txt
-          retention-days: 7
+          path: build-efdd02d-node-${{ matrix.node-version }}.txt
