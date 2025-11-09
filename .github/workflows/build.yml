@@ -1,56 +1,100 @@
-name: Matrix Build with Artifacts
+name: Matrix Build CI/CD
 
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build (node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-
+  matrix-build:
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        # at least 3 variants
-        node-version: ['14', '16', '18']
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [18, 20]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: macos
+          - os: windows-latest
+            platform: windows
+    
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Node.js ${{ matrix.node-version }}
+      
+      - name: matrix-efdd02d
+        run: |
+          echo "Building for OS: ${{ matrix.os }}"
+          echo "Node version: ${{ matrix.node-version }}"
+          echo "Platform: ${{ matrix.platform }}"
+      
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: matrix-3b32760
-        # This step must contain the identifier matrix-3b32760
+      
+      - name: Generate build metadata
         run: |
-          echo "matrix-efdd02d - running build for Node.js ${{ matrix.node-version }}"
-          echo "Variant: node-${{ matrix.node-version }}" > variant-info.txt
-
-      - name: Install dependencies (if any)
-        run: |
-          # No dependencies required for this demo; keep this step to mirror real builds
-          node --version
-          npm --version || true
-
-      - name: Generate unique build artifact
-        run: |
-          ARTFILE="build-3b32760-node-${{ matrix.node-version }}.txt"
-          echo "Build artifact for Node.js ${{ matrix.node-version }}" > "$ARTFILE"
-          echo "Repository: $GITHUB_REPOSITORY" >> "$ARTFILE"
-          echo "Run ID: $GITHUB_RUN_ID" >> "$ARTFILE"
-          echo "Matrix variant: node-${{ matrix.node-version }}" >> "$ARTFILE"
-          # show file size for debugging
-          ls -l "$ARTFILE"
+          echo "Build Information" > build-info.txt
+          echo "==================" >> build-info.txt
+          echo "OS: ${{ matrix.os }}" >> build-info.txt
+          echo "Platform: ${{ matrix.platform }}" >> build-info.txt
+          echo "Node Version: ${{ matrix.node-version }}" >> build-info.txt
+          echo "Timestamp: $(date)" >> build-info.txt
+          echo "Build ID: ${{ github.run_id }}-${{ github.run_number }}" >> build-info.txt
         shell: bash
-
-      - name: Upload artifact
+      
+      - name: Create build artifact with JSON
+        run: |
+          node -e "console.log(JSON.stringify({
+            os: '${{ matrix.os }}',
+            platform: '${{ matrix.platform }}',
+            nodeVersion: '${{ matrix.node-version }}',
+            buildId: '${{ github.run_id }}',
+            timestamp: new Date().toISOString(),
+            status: 'success'
+          }, null, 2))" > build-output.json
+        shell: bash
+      
+      - name: Generate platform-specific output
+        run: |
+          echo "Compiled output for ${{ matrix.platform }}-node${{ matrix.node-version }}" > compiled-output.txt
+          echo "================================" >> compiled-output.txt
+          echo "This artifact was built on ${{ matrix.os }}" >> compiled-output.txt
+          echo "Node.js version: ${{ matrix.node-version }}" >> compiled-output.txt
+          echo "GitHub Actions Run: ${{ github.run_id }}" >> compiled-output.txt
+        shell: bash
+      
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          # Must follow prefix build-3b32760-<variant>
-          name: build-efdd02d-node-${{ matrix.node-version }}
-          path: build-efdd02d-node-${{ matrix.node-version }}.txt
+          name: build-efdd02d-${{ matrix.platform }}-node${{ matrix.node-version }}
+          path: |
+            build-info.txt
+            build-output.json
+            compiled-output.txt
+          retention-days: 30
+      
+      - name: Display artifact info
+        run: |
+          echo "✅ Artifact uploaded: build-efdd02d-${{ matrix.platform }}-node${{ matrix.node-version }}"
+          echo "Contents:"
+          cat build-info.txt
+          echo ""
+          echo "JSON output:"
+          cat build-output.json
+        shell: bash
+
+  summary:
+    needs: matrix-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Summary
+        run: |
+          echo "🎉 All matrix builds completed successfully!"
+          echo "Total builds: 6 (3 OS × 2 Node versions)"
+          echo "Artifacts generated with prefix: build-efdd02d"
