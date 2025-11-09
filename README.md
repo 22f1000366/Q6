@@ -1,4 +1,1 @@
-# Q6
-# My TDS Assignment Repository
-
-My email is 23f3004197@ds.study.iitm.ac.in
+22f1000366@ds.study.iitm.ac.in)
